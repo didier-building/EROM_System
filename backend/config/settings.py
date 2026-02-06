@@ -19,6 +19,9 @@ DEBUG = os.environ.get('DEBUG', 'True') == 'True'
 # For desktop app, we only allow localhost
 ALLOWED_HOSTS = ['127.0.0.1', 'localhost']
 
+# Custom User Model
+AUTH_USER_MODEL = 'core.User'
+
 # Application definition
 # Minimal set - removed admin, sessions, messages for embedded app
 INSTALLED_APPS = [
