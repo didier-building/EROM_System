@@ -2,6 +2,8 @@
 Integration tests for realistic shop scenarios
 """
 from django.test import TestCase
+from django.db import models
+from django.db.models import F, Sum
 from decimal import Decimal
 from apps.core.test_factories import TestDataFactory
 from apps.inventory.models import Product
@@ -62,14 +64,12 @@ class RealisticShopTests(TestCase):
             product.save()
         
         low_stock_products = Product.objects.filter(
-            quantity_in_stock__lte=models.F('reorder_level')
+            quantity_in_stock__lte=F('reorder_level')
         )
         self.assertGreaterEqual(low_stock_products.count(), 5)
     
     def test_inventory_value_calculation(self):
         """Test system can calculate total inventory value"""
-        from django.db.models import F, Sum
-        
         total_value = Product.objects.aggregate(
             total=Sum(F('cost_price') * F('quantity_in_stock'))
         )['total'] or Decimal('0')

@@ -122,8 +122,9 @@ class AuthenticationAPITests(TestCase):
         response = self.client.get(url)
         
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data['username'], 'owner')
-        self.assertEqual(response.data['role'], User.OWNER)
+        self.assertTrue(response.data['success'])
+        self.assertEqual(response.data['data']['username'], 'owner')
+        self.assertEqual(response.data['data']['role'], User.OWNER)
     
     def test_unauthenticated_access_denied(self):
         """Test endpoints require authentication"""

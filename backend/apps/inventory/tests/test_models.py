@@ -164,22 +164,21 @@ class InventoryMovementTests(TestCase):
         movement = InventoryMovement.objects.create(
             product=self.product,
             movement_type=InventoryMovement.PURCHASE,
-            quantity=50,
-            unit_price=Decimal("35000"),
-            reference_number="PO-2026-001",
+            quantity_delta=50,
+            reference_id="PO-2026-001",
             notes="Stock replenishment",
             performed_by=self.user
         )
         
-        self.assertEqual(movement.quantity, 50)
-        self.assertEqual(movement.total_value, Decimal("1750000"))
+        self.assertEqual(movement.quantity_delta, 50)
+        self.assertEqual(movement.reference_id, "PO-2026-001")
     
     def test_movement_types(self):
         """Test all movement types can be created"""
         types = [
             InventoryMovement.PURCHASE,
             InventoryMovement.SALE,
-            InventoryMovement.TRANSFER,
+            InventoryMovement.TRANSFER_TO_AGENT,
             InventoryMovement.ADJUSTMENT,
             InventoryMovement.REVERSAL
         ]
@@ -188,8 +187,7 @@ class InventoryMovementTests(TestCase):
             InventoryMovement.objects.create(
                 product=self.product,
                 movement_type=mov_type,
-                quantity=10,
-                unit_price=Decimal("35000"),
+                quantity_delta=10 if mov_type == InventoryMovement.PURCHASE else -10,
                 performed_by=self.user
             )
         
@@ -200,8 +198,7 @@ class InventoryMovementTests(TestCase):
         movement = InventoryMovement.objects.create(
             product=self.product,
             movement_type=InventoryMovement.SALE,
-            quantity=5,
-            unit_price=Decimal("55000"),
+            quantity_delta=-5,
             performed_by=self.user
         )
         
@@ -209,8 +206,7 @@ class InventoryMovementTests(TestCase):
         reversal = InventoryMovement.objects.create(
             product=self.product,
             movement_type=InventoryMovement.REVERSAL,
-            quantity=5,
-            unit_price=Decimal("55000"),
+            quantity_delta=5,
             reversal_of=movement,
             performed_by=self.user
         )
@@ -225,8 +221,7 @@ class InventoryMovementTests(TestCase):
             movements.append(InventoryMovement(
                 product=self.product,
                 movement_type=InventoryMovement.SALE if i % 2 == 0 else InventoryMovement.PURCHASE,
-                quantity=i + 1,
-                unit_price=Decimal("35000"),
+                quantity_delta=(i + 1) if i % 2 == 1 else -(i + 1),
                 performed_by=self.user
             ))
         

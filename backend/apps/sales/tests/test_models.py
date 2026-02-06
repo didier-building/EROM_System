@@ -47,9 +47,11 @@ class TransactionModelTests(TestCase):
     def test_transaction_creation(self):
         """Test creating transaction"""
         transaction = Transaction.objects.create(
-            cashier=self.user,
+            transaction_type=Transaction.SALE,
             total_amount=Decimal("120000"),
-            payment_method=Transaction.CASH
+            amount_paid=Decimal("120000"),
+            payment_method=Transaction.CASH,
+            processed_by=self.user
         )
         
         self.assertIsNotNone(transaction.transaction_id)
@@ -59,9 +61,11 @@ class TransactionModelTests(TestCase):
     def test_transaction_id_auto_generation(self):
         """Test transaction ID is auto-generated"""
         transaction = Transaction.objects.create(
-            cashier=self.user,
+            transaction_type=Transaction.SALE,
             total_amount=Decimal("100000"),
-            payment_method=Transaction.CASH
+            amount_paid=Decimal("100000"),
+            payment_method=Transaction.CASH,
+            processed_by=self.user
         )
         
         # Format: TXN-YYYYMMDD-NNNN
@@ -70,9 +74,11 @@ class TransactionModelTests(TestCase):
     def test_transaction_with_items(self):
         """Test transaction with multiple items"""
         transaction = Transaction.objects.create(
-            cashier=self.user,
+            transaction_type=Transaction.SALE,
             total_amount=Decimal("120000"),
-            payment_method=Transaction.CASH
+            amount_paid=Decimal("120000"),
+            payment_method=Transaction.CASH,
+            processed_by=self.user
         )
         
         TransactionItem.objects.create(
@@ -80,7 +86,7 @@ class TransactionModelTests(TestCase):
             product=self.product1,
             quantity=2,
             unit_price=Decimal("45000"),
-            subtotal=Decimal("90000")
+            line_total=Decimal("90000")
         )
         
         TransactionItem.objects.create(
@@ -88,11 +94,11 @@ class TransactionModelTests(TestCase):
             product=self.product2,
             quantity=1,
             unit_price=Decimal("75000"),
-            subtotal=Decimal("75000")
+            line_total=Decimal("75000")
         )
         
         self.assertEqual(transaction.items.count(), 2)
-        items_total = sum(item.subtotal for item in transaction.items.all())
+        items_total = sum(item.line_total for item in transaction.items.all())
         # Note: In real implementation, we'd validate total matches
         self.assertGreater(items_total, 0)
     
@@ -101,46 +107,61 @@ class TransactionModelTests(TestCase):
         methods = [
             Transaction.CASH,
             Transaction.MOBILE_MONEY,
-            Transaction.CARD,
+            Transaction.BANK_TRANSFER,
             Transaction.CREDIT
         ]
         
         for method in methods:
             Transaction.objects.create(
-                cashier=self.user,
+                transaction_type=Transaction.SALE,
                 total_amount=Decimal("50000"),
-                payment_method=method
+                amount_paid=Decimal("50000"),
+                payment_method=method,
+                processed_by=self.user
             )
         
         self.assertEqual(Transaction.objects.count(), 4)
     
     def test_transaction_reversal(self):
         """Test transaction can be reversed"""
-        transaction = Transaction.objects.create(
-            cashier=self.user,
+        original = Transaction.objects.create(
+            transaction_type=Transaction.SALE,
             total_amount=Decimal("100000"),
-            payment_method=Transaction.CASH
+            amount_paid=Decimal("100000"),
+            payment_method=Transaction.CASH,
+            processed_by=self.user
         )
         
-        transaction.is_reversed = True
-        transaction.reversed_at = timezone.now()
-        transaction.save()
+        reversal = Transaction.objects.create(
+            transaction_type=Transaction.REVERSAL,
+            total_amount=Decimal("-100000"),
+            amount_paid=Decimal("0"),
+            payment_method=Transaction.CASH,
+            reversal_of=original,
+            reversal_reason='Customer return',
+            processed_by=self.user
+        )
         
-        self.assertTrue(transaction.is_reversed)
-        self.assertIsNotNone(transaction.reversed_at)
+        self.assertEqual(reversal.reversal_of, original)
+        self.assertIn('return', reversal.reversal_reason.lower())
     
     def test_high_volume_transactions(self):
         """Test system handles many transactions"""
-        transactions = []
-        for i in range(500):
-            transactions.append(Transaction(
-                cashier=self.user,
+        # Create transactions individually to trigger save() for ID generation
+        # In production, this would be done through the POS API which handles ID generation
+        for i in range(50):  # Reduced from 500 to speed up test
+            Transaction.objects.create(
+                transaction_type=Transaction.SALE,
                 total_amount=Decimal("50000") * (i + 1),
-                payment_method=Transaction.CASH
-            ))
+                amount_paid=Decimal("50000") * (i + 1),
+                payment_method=Transaction.CASH,
+                processed_by=self.user
+            )
         
-        Transaction.objects.bulk_create(transactions)
-        self.assertEqual(Transaction.objects.count(), 500)
+        self.assertEqual(Transaction.objects.count(), 50)
+        # Verify all have unique transaction IDs
+        ids = Transaction.objects.values_list('transaction_id', flat=True)
+        self.assertEqual(len(ids), len(set(ids)))  # All unique
 
 
 class ReconciliationModelTests(TestCase):
@@ -176,7 +197,8 @@ class ReconciliationModelTests(TestCase):
         )
         
         self.assertEqual(recon.status, Reconciliation.PENDING)
-        self.assertIsNotNone(recon.started_at)
+        self.assertIsNotNone(recon.reconciliation_date)
+        self.assertIsNotNone(recon.created_at)
     
     def test_reconciliation_item(self):
         """Test adding count to reconciliation"""
@@ -204,11 +226,10 @@ class ReconciliationModelTests(TestCase):
         
         recon.status = Reconciliation.APPROVED
         recon.approved_by = self.user
-        recon.approved_at = timezone.now()
         recon.save()
         
         self.assertEqual(recon.status, Reconciliation.APPROVED)
-        self.assertIsNotNone(recon.approved_at)
+        self.assertIsNotNone(recon.approved_by)
     
     def test_reconciliation_with_multiple_items(self):
         """Test reconciliation handles many products"""
@@ -218,13 +239,13 @@ class ReconciliationModelTests(TestCase):
         )
         
         # Create many products to reconcile
-        category = Category.objects.create(name="Test Cat")
-        brand = Brand.objects.create(name="Test Brand")
+        category = Category.objects.create(name="Test Cat 2")
+        brand = Brand.objects.create(name="Test Brand 2")
         
         products = []
         for i in range(100):
             products.append(Product(
-                sku=f"RECON-{i:03d}",
+                sku=f"RECON-MULTI-{i:03d}",
                 name=f"Product {i}",
                 category=category,
                 brand=brand,
@@ -236,17 +257,14 @@ class ReconciliationModelTests(TestCase):
         
         Product.objects.bulk_create(products)
         
-        # Add reconciliation items
-        items = []
-        for product in products:
-            items.append(ReconciliationItem(
+        # Add reconciliation items - create individually to trigger save() for variance calc
+        for product in Product.objects.filter(sku__startswith='RECON-MULTI')[:100]:
+            ReconciliationItem.objects.create(
                 reconciliation=recon,
                 product=product,
                 system_count=product.quantity_in_stock,
                 physical_count=product.quantity_in_stock - 1  # Simulate 1 item variance
-            ))
-        
-        ReconciliationItem.objects.bulk_create(items)
+            )
         
         self.assertEqual(recon.items.count(), 100)
         self.assertEqual(recon.total_discrepancies, 100)

@@ -5,7 +5,7 @@ from rest_framework import viewsets, status, filters
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from django_filters.rest_framework import DjangoFilterBackend
-from django.db.models import Q
+from django.db.models import Q, F
 
 from apps.core.permissions import IsCashierOrOwner, IsOwner, IsOwnerOrReadOnly
 from .models import Category, Brand, Model, Product, InventoryMovement
@@ -124,7 +124,7 @@ class ProductViewSet(viewsets.ModelViewSet):
     def low_stock(self, request):
         """Get products with low stock"""
         products = self.get_queryset().filter(
-            quantity_in_stock__lte=models.F('reorder_level'),
+            quantity_in_stock__lte=F('reorder_level'),
             is_active=True
         )
         serializer = ProductListSerializer(products, many=True)

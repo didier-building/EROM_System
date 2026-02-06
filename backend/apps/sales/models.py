@@ -18,6 +18,13 @@ class Transaction(TimeStampedModel):
     RETURN = 'return'
     REVERSAL = 'reversal'
     
+    # Payment method constants
+    CASH = 'cash'
+    MOBILE_MONEY = 'mobile_money'
+    BANK_TRANSFER = 'bank_transfer'
+    CARD = 'card'
+    CREDIT = 'credit'
+    
     TRANSACTION_TYPES = [
         (SALE, 'Sale'),
         (PURCHASE, 'Purchase'),
@@ -139,6 +146,13 @@ class Reconciliation(TimeStampedModel):
     Blind count reconciliation records
     Tracks physical vs system stock counts
     """
+    # Status constants
+    IN_PROGRESS = 'in_progress'
+    COMPLETED = 'completed'
+    APPROVED = 'approved'
+    REJECTED = 'rejected'
+    PENDING = 'in_progress'  # Alias for backward compatibility
+    
     reconciliation_date = models.DateTimeField(default=timezone.now)
     reconciliation_type = models.CharField(
         max_length=20,

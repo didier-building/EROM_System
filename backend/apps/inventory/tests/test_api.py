@@ -136,14 +136,16 @@ class InventoryAPITests(TestCase):
         response = self.client.get(url)
         
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data), 1)
-        self.assertEqual(response.data[0]['sku'], 'LOW-STOCK-001')
+        # Response format: {'success': True, 'data': [...], 'count': N}
+        self.assertEqual(response.data['count'], 1)
+        self.assertEqual(response.data['data'][0]['sku'], 'LOW-STOCK-001')
     
     def test_adjust_stock_owner_only(self):
         """Test stock adjustment requires owner permission"""
         url = reverse('product-adjust-stock', args=[self.product.id])
         data = {
-            'quantity': 10,
+            'product_id': self.product.id,
+            'quantity_delta': -10,
             'reason': 'Damaged items removed'
         }
         
