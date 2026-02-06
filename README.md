@@ -14,6 +14,7 @@ Aguka is a localized retail operations management system built specifically for 
 - **Frontend:** React (TypeScript) + Material UI
 - **Database:** SQLite (WAL mode, append-only ledger)
 - **Desktop:** Electron wrapper
+- **Package Manager:** UV (Python), npm/yarn (Node.js)
 - **Packaging:** PyInstaller + electron-builder
 
 ## Architecture
@@ -131,16 +132,23 @@ EROM_system/
 
 ### Prerequisites
 - Python 3.9+
+- UV (Python package manager)
 - Node.js 16+
 - npm or yarn
 - Git
 
+### Install UV
+```bash
+curl -LsSf https://astral.sh/uv/install.sh | sh
+# Or on Windows: powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
+```
+
 ### Backend Setup
 ```bash
 cd backend
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-pip install -r requirements.txt
+uv venv
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+uv pip install -r requirements.txt
 python manage.py migrate
 python manage.py createsuperuser
 python manage.py runserver
