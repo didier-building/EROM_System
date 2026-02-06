@@ -25,6 +25,7 @@ AUTH_USER_MODEL = 'core.User'
 # Application definition
 # Minimal set - removed admin, sessions, messages for embedded app
 INSTALLED_APPS = [
+    'django.contrib.auth',  # Required by DRF permissions
     'django.contrib.contenttypes',
     'django.contrib.staticfiles',
     'rest_framework',

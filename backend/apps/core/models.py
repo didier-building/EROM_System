@@ -78,6 +78,18 @@ class User(TimeStampedModel):
     session_token = models.CharField(max_length=100, blank=True)
     session_expires_at = models.DateTimeField(null=True, blank=True)
     
+    # Required by Django's AUTH_USER_MODEL
+    USERNAME_FIELD = 'username'
+    REQUIRED_FIELDS = ['full_name', 'role']
+    
+    @property
+    def is_anonymous(self):
+        return False
+    
+    @property
+    def is_authenticated(self):
+        return True
+    
     class Meta:
         db_table = 'users'
         ordering = ['-created_at']
