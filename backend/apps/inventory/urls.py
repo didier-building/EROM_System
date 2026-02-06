@@ -1,11 +1,17 @@
 """
 URL routing for inventory app
 """
-from django.urls import path
+from django.urls import path, include
 from rest_framework.routers import DefaultRouter
+from . import views
 
-# URLs will be added after views are created
+router = DefaultRouter()
+router.register('categories', views.CategoryViewSet, basename='category')
+router.register('brands', views.BrandViewSet, basename='brand')
+router.register('models', views.ModelViewSet, basename='model')
+router.register('products', views.ProductViewSet, basename='product')
+router.register('movements', views.InventoryMovementViewSet, basename='movement')
 
 urlpatterns = [
-    # Placeholder - views will be added next
+    path('', include(router.urls)),
 ]
