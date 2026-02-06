@@ -71,16 +71,24 @@ DATABASES = {
         'OPTIONS': {
             # Critical optimizations for embedded desktop app
             'timeout': 20,  # Prevent "database is locked" errors
-            'init_command': '''
-                PRAGMA journal_mode=WAL;
-                PRAGMA synchronous=NORMAL;
-                PRAGMA cache_size=-64000;
-                PRAGMA temp_store=MEMORY;
-                PRAGMA foreign_keys=ON;
-            ''',
         }
     }
 }
+
+# SQLite PRAGMA settings will be applied via connection post-init signal
+def init_sqlite_pragmas(sender, connection, **kwargs):
+    """Enable WAL mode and other performance optimizations for SQLite"""
+    if connection.vendor == 'sqlite':
+        cursor = connection.cursor()
+        cursor.execute('PRAGMA journal_mode=WAL;')
+        cursor.execute('PRAGMA synchronous=NORMAL;')
+        cursor.execute('PRAGMA cache_size=-64000;')
+        cursor.execute('PRAGMA temp_store=MEMORY;')
+        cursor.execute('PRAGMA foreign_keys=ON;')
+        cursor.close()
+
+from django.db.backends.signals import connection_created
+connection_created.connect(init_sqlite_pragmas)
 
 # Password validation
 AUTH_PASSWORD_VALIDATORS = [
