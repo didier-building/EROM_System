@@ -47,7 +47,8 @@ class ProductListSerializer(serializers.ModelSerializer):
         model = Product
         fields = [
             'id', 'sku', 'name', 'category', 'category_name', 'brand', 'brand_name',
-            'quantity_in_stock', 'quantity_in_field', 'selling_price', 'is_active', 'is_low_stock'
+            'quantity_in_stock', 'quantity_in_field', 'selling_price', 'reorder_level', 
+            'is_active', 'is_low_stock'
         ]
 
 

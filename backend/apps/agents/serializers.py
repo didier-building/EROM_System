@@ -9,12 +9,13 @@ from apps.inventory.serializers import ProductListSerializer
 class AgentListSerializer(serializers.ModelSerializer):
     """Lightweight serializer for agent lists"""
     total_debt = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
+    can_take_more_stock = serializers.BooleanField(read_only=True)
     
     class Meta:
         model = Agent
         fields = [
             'id', 'full_name', 'phone_number', 'business_name', 'area',
-            'credit_limit', 'total_debt', 'is_active', 'is_trusted'
+            'credit_limit', 'total_debt', 'can_take_more_stock', 'is_active', 'is_trusted'
         ]
 
 

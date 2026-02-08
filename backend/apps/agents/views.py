@@ -41,6 +41,20 @@ class AgentViewSet(viewsets.ModelViewSet):
         serializer.save(created_by=self.request.user)
     
     @action(detail=True, methods=['get'])
+    def ledger(self, request, pk=None):
+        """Get all ledger entries for an agent"""
+        agent = self.get_object()
+        ledger_entries = agent.ledger_entries.select_related('product', 'transferred_by').order_by('-transfer_date')
+        
+        serializer = AgentLedgerSerializer(ledger_entries, many=True)
+        
+        return Response({
+            'success': True,
+            'count': ledger_entries.count(),
+            'results': serializer.data
+        })
+    
+    @action(detail=True, methods=['get'])
     def debt_summary(self, request, pk=None):
         """Get debt summary for an agent"""
         agent = self.get_object()

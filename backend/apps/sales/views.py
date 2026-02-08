@@ -96,6 +96,28 @@ class TransactionViewSet(viewsets.ReadOnlyModelViewSet):
         }, status=status.HTTP_201_CREATED)
     
     @action(detail=False, methods=['get'])
+    def today(self, request):
+        """Get today's transactions"""
+        today = timezone.now().date()
+        
+        transactions = self.get_queryset().filter(
+            transaction_type=Transaction.SALE,
+            transaction_date__date=today
+        )
+        
+        total_sales = sum(t.total_amount for t in transactions)
+        transaction_count = transactions.count()
+        
+        return Response({
+            'success': True,
+            'data': {
+                'total_sales': str(total_sales),
+                'transaction_count': transaction_count,
+                'transactions': TransactionListSerializer(transactions, many=True).data
+            }
+        })
+    
+    @action(detail=False, methods=['get'])
     def daily_summary(self, request):
         """Get daily sales summary"""
         date = request.query_params.get('date', timezone.now().date())
@@ -121,6 +143,71 @@ class TransactionViewSet(viewsets.ReadOnlyModelViewSet):
                 'total_transactions': total_transactions,
                 'by_payment_method': by_payment_method,
                 'transactions': TransactionListSerializer(transactions, many=True).data
+            }
+        })
+    
+    @action(detail=False, methods=['get'])
+    def dashboard_stats(self, request):
+        """Get dashboard statistics"""
+        from apps.inventory.models import Product
+        from apps.agents.models import Agent, AgentLedger
+        from django.db.models import Sum, F, DecimalField
+        from decimal import Decimal
+        
+        # Today's sales - use aggregate for proper calculation
+        today = timezone.now().date()
+        today_stats = self.get_queryset().filter(
+            transaction_type=Transaction.SALE,
+            transaction_date__date=today
+        ).aggregate(
+            total_sales=Sum('total_amount'),
+            transaction_count=Sum(1)
+        )
+        today_sales = today_stats['total_sales'] or Decimal('0')
+        today_count = today_stats['transaction_count'] or 0
+        
+        # Inventory stats
+        total_products = Product.objects.filter(is_active=True).count()
+        low_stock_products = Product.objects.filter(
+            is_active=True,
+            quantity_in_stock__lte=F('reorder_level')
+        ).count()
+        
+        # Calculate inventory value using selling price
+        inventory_stats = Product.objects.filter(is_active=True).aggregate(
+            total_value=Sum(
+                F('quantity_in_stock') * F('selling_price'),
+                output_field=DecimalField()
+            ),
+            total_cost=Sum(
+                F('quantity_in_stock') * F('cost_price'),
+                output_field=DecimalField()
+            )
+        )
+        inventory_value = inventory_stats['total_value'] or Decimal('0')
+        inventory_cost = inventory_stats['total_cost'] or Decimal('0')
+        
+        # Agent stats - calculate total debt from unpaid ledger entries
+        total_agents = Agent.objects.filter(is_active=True).count()
+        debt_stats = AgentLedger.objects.filter(
+            agent__is_active=True,
+            is_paid=False
+        ).aggregate(
+            total_debt=Sum('debt_amount')
+        )
+        total_debt = debt_stats['total_debt'] or Decimal('0')
+        
+        return Response({
+            'success': True,
+            'data': {
+                'today_sales': str(today_sales),
+                'today_transactions': today_count,
+                'total_products': total_products,
+                'low_stock_products': low_stock_products,
+                'inventory_value': str(inventory_value),
+                'inventory_cost': str(inventory_cost),
+                'total_agents': total_agents,
+                'total_debt': str(total_debt),
             }
         })
 
